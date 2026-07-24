@@ -1,3 +1,7 @@
+<img width="509" height="518" alt="image" src="https://github.com/user-attachments/assets/5061cc16-3cbb-4903-8447-2def91805aef" />
+
+
+
 # ComfyUI Krea2 Prompt Styler
 
 A prompt builder node for **Krea-2** and other **Flux-based models** in ComfyUI.
@@ -98,6 +102,5 @@ Simply append values to any of the arrays: `models`, `focal_lengths`, `apertures
 - `web/js/krea2_styler.js` filters the style dropdown client-side whenever the category changes
 - Saved workflows keep their style selection on load – the filter only resets the value if it doesn't belong to the selected category
 
-## License
-
-MIT
+## Credits
+/u/Dear-Spend-2865 (reddit) for creating the masssive Wildcard list which was reformatted for this node.
