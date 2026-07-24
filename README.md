@@ -88,7 +88,7 @@ Simply append values to any of the arrays: `models`, `focal_lengths`, `apertures
 - `web/js/krea2_styler.js` filters the style dropdown client-side whenever the category changes
 - Saved workflows keep their style selection on load – the filter only resets the value if it doesn't belong to the selected category
 
-## Honorable Metnion
+## Honorable Mentions
 Reddit user
 /u/Dear-Spend-2865
 for creating a massive Wildcard list which I took and reformatted for this node.
