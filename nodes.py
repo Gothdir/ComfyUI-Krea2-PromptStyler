@@ -1,0 +1,186 @@
+"""
+Krea2 Prompt Styler
+-------------------
+Baut aus einem Basis-Prompt, einem Artstyle und Kamera-Einstellungen
+einen fertigen Prompt in natuerlicher Sprache fuer Krea-2 / Flux-basierte Modelle.
+
+Aufbau des Ergebnisses:
+    [Style-Text]  [Basis-Prompt]  [Shot Type]  [Kamera]  [Film Stock]  [Lighting]
+
+Die Auswahl-Listen kommen aus artists.json und cameras.json im Node-Ordner
+und koennen dort beliebig erweitert werden (ComfyUI danach neu starten).
+
+Das Style-Dropdown wird per JS-Frontend (web/js/krea2_styler.js) dynamisch
+nach der gewaehlten Kategorie gefiltert.
+"""
+
+import json
+import os
+
+NODE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+
+def _load_json(filename, fallback):
+    path = os.path.join(NODE_DIR, filename)
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception as e:
+        print(f"[Krea2 Prompt Styler] Konnte {filename} nicht laden: {e}")
+        return fallback
+
+
+# ---------------------------------------------------------------------------
+# JSONs laden (einmal beim Start von ComfyUI)
+# ---------------------------------------------------------------------------
+
+ARTISTS = _load_json("artists.json", {"Fallback": {"No styles loaded": ""}})
+CAMERAS = _load_json("cameras.json", {
+    "models": ["Sony A7 IV"],
+    "focal_lengths": ["50mm"],
+    "apertures": ["f/1.8"],
+    "film_stocks": ["Kodak Portra 400"],
+    "shot_types": ["medium shot"],
+    "lighting": ["soft studio lighting"],
+})
+
+CATEGORY_CHOICES = list(ARTISTS.keys())
+
+# Stilname -> Beschreibung (Namen sind kategorieuebergreifend eindeutig)
+STYLE_LOOKUP = {}
+ALL_STYLE_NAMES = []
+for _cat in CATEGORY_CHOICES:
+    for _name in sorted(ARTISTS[_cat].keys()):
+        STYLE_LOOKUP[_name] = ARTISTS[_cat][_name]
+        ALL_STYLE_NAMES.append(_name)
+
+_DEFAULT_CAT = CATEGORY_CHOICES[0] if CATEGORY_CHOICES else ""
+_DEFAULT_STYLE = sorted(ARTISTS[_DEFAULT_CAT].keys())[0] if _DEFAULT_CAT else ""
+
+
+# ---------------------------------------------------------------------------
+# API-Route: liefert dem JS-Frontend die Kategorie->Styles-Zuordnung
+# ---------------------------------------------------------------------------
+
+try:
+    from server import PromptServer
+    from aiohttp import web
+
+    @PromptServer.instance.routes.get("/krea2_styler/artists")
+    async def _krea2_get_artists(request):
+        mapping = {cat: sorted(entries.keys()) for cat, entries in ARTISTS.items()}
+        return web.json_response(mapping)
+except Exception:
+    # Ausserhalb von ComfyUI (z. B. beim Testen) einfach ignorieren
+    pass
+
+
+def _dof_hint(aperture: str) -> str:
+    """Passenden Depth-of-Field-Zusatz zur Blende liefern."""
+    try:
+        f_num = float(aperture.replace("f/", "").replace(",", "."))
+    except ValueError:
+        return ""
+    if f_num <= 2.0:
+        return ", shallow depth of field with creamy bokeh"
+    if f_num <= 4.0:
+        return ", moderately shallow depth of field"
+    if f_num >= 8.0:
+        return ", deep depth of field with everything in sharp focus"
+    return ""
+
+
+class Krea2PromptStyler:
+    CATEGORY = "conditioning/krea2"
+    FUNCTION = "build_prompt"
+    RETURN_TYPES = ("STRING",)
+    RETURN_NAMES = ("prompt",)
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "prompt": ("STRING", {"forceInput": True}),
+
+                # ------ Artstyle ------
+                "use_artstyle": ("BOOLEAN", {"default": True}),
+                "category": (CATEGORY_CHOICES, {"default": _DEFAULT_CAT}),
+                # Enthaelt ALLE Styles (noetig fuer die Validierung);
+                # das JS-Frontend filtert die Anzeige nach Kategorie.
+                "style": (ALL_STYLE_NAMES, {"default": _DEFAULT_STYLE}),
+                "full_style_text": ("BOOLEAN", {
+                    "default": True,
+                    "tooltip": "AN: komplette Stilbeschreibung aus artists.json verwenden. "
+                               "AUS: nur kurzer Satz 'In the style of ...'."
+                }),
+
+                # ------ Shot / Framing ------
+                "use_shot_type": ("BOOLEAN", {"default": False}),
+                "shot_type": (CAMERAS["shot_types"],),
+
+                # ------ Kamera (Master-Switch) ------
+                "use_camera": ("BOOLEAN", {"default": True}),
+                "camera_model": (CAMERAS["models"],),
+                "focal_length": (CAMERAS["focal_lengths"], {"default": "50mm"}),
+                "aperture": (CAMERAS["apertures"], {"default": "f/1.8"}),
+                "use_film_stock": ("BOOLEAN", {"default": False}),
+                "film_stock": (CAMERAS["film_stocks"],),
+
+                # ------ Lighting ------
+                "use_lighting": ("BOOLEAN", {"default": False}),
+                "lighting": (CAMERAS["lighting"],),
+            }
+        }
+
+    def build_prompt(self, prompt, use_artstyle, category, style, full_style_text,
+                     use_shot_type, shot_type,
+                     use_camera, camera_model, focal_length, aperture,
+                     use_film_stock, film_stock,
+                     use_lighting, lighting):
+
+        parts = []
+
+        # ------ 1. Artstyle (vorne) ------
+        if use_artstyle and style in STYLE_LOOKUP:
+            desc = STYLE_LOOKUP[style]
+            if full_style_text and desc:
+                # Komplette Wildcard-Beschreibung als eigener Satzblock
+                parts.append(f"{style}: {desc}")
+            else:
+                clean = style.replace(" Style", "").replace(" (Generic)", "")
+                parts.append(f"In the style of {clean}.")
+
+        # ------ 2. Basis-Prompt ------
+        base = (prompt or "").strip()
+        if base:
+            if not base.endswith((".", "!", "?")):
+                base += "."
+            parts.append(base)
+
+        # ------ 3. Shot Type ------
+        if use_shot_type:
+            parts.append(f"{shot_type.capitalize()}.")
+
+        # ------ 4. Kamera (Master-Switch deaktiviert ALLES Technische) ------
+        if use_camera:
+            cam = f"Shot on a {camera_model} with a {focal_length} lens at {aperture}"
+            cam += _dof_hint(aperture)
+            parts.append(cam + ".")
+            if use_film_stock:
+                parts.append(f"{film_stock} film look.")
+
+        # ------ 5. Lighting ------
+        if use_lighting:
+            parts.append(f"{lighting.capitalize()}.")
+
+        final_prompt = " ".join(parts)
+        return (final_prompt,)
+
+
+NODE_CLASS_MAPPINGS = {
+    "Krea2PromptStyler": Krea2PromptStyler,
+}
+
+NODE_DISPLAY_NAME_MAPPINGS = {
+    "Krea2PromptStyler": "Krea2 Prompt Styler",
+}
