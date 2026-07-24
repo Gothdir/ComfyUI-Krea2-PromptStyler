@@ -1,7 +1,3 @@
-<img width="618" height="779" alt="image" src="https://github.com/user-attachments/assets/3b55287c-3577-4154-8bf8-d85d916dcf4d" />
-
-
-
 # ComfyUI Krea2 Prompt Styler
 
 A prompt builder node for **Krea-2** and other **Flux-based models** in ComfyUI.
@@ -26,6 +22,7 @@ Takes your base prompt and wraps it in a natural language prompt with a selected
 - **Comprehensive camera settings** – 30 camera models (mirrorless, medium format, cinema, retro), 20 focal lengths, 12 apertures, 18 film stocks, 24 shot types, 26 lighting setups
 - **Automatic depth of field hints** – selecting f/1.8 adds "shallow depth of field with creamy bokeh", f/11 adds "deep depth of field", etc.
 - **Individual toggles per block** – art style, shot type, film stock and lighting can each be switched on/off; `use_camera` acts as a master switch that disables all technical camera segments at once
+- **Wildcard mode** – randomizes all *activated* blocks per run without touching your dropdown selections; seed-based, so results are reproducible
 - **Easily extendable** – all styles and camera options live in two JSON files, no code changes needed
 
 ## Installation
@@ -44,7 +41,8 @@ Restart ComfyUI. If the style dropdown doesn't filter by category, hard-refresh 
 1. Add the node: **conditioning/krea2 → Krea2 Prompt Styler**
 2. Connect a string source (e.g. a Primitive/Text node) to the `prompt` input
 3. Connect the `prompt` output to your CLIP Text Encode node
-4. Configure:
+4. Optional: connect the `settings` output to a "Show Text" node to see exactly which values were used – especially handy in wildcard mode, where it shows the rolled values including the seed
+5. Configure:
 
 | Widget | Description |
 |---|---|
@@ -57,8 +55,16 @@ Restart ComfyUI. If the style dropdown doesn't filter by category, hard-refresh 
 | `camera_model` / `focal_length` / `aperture` | Technical camera settings |
 | `use_film_stock` / `film_stock` | Analog film look (Portra, CineStill, Velvia, ...) |
 | `use_lighting` / `lighting` | Lighting setup (golden hour, Rembrandt, neon, ...) |
+| `use_wildcard` | Randomize all **activated** blocks – dropdown selections stay untouched |
+| `seed` | Seed for wildcard mode – set to `randomize` for new combinations every run |
 
-**Tip:** Route the output through a "Show Text" node to inspect the final prompt while fine-tuning.
+### Wildcard mode
+
+Turn on `use_wildcard` to let the node roll random values for every block that is currently activated: the art style (within the selected category), shot type, camera model, focal length, aperture, film stock and lighting. Blocks that are toggled off stay off. Your dropdown selections are never changed – turn the switch off and you're back to your exact configuration.
+
+The `seed` widget controls the randomness: leave it on `randomize` (default ComfyUI behavior via *control after generate*) to get a fresh combination on every queue, or set a fixed seed to reproduce a combination you liked.
+
+**Tip:** Route the `prompt` output through a "Show Text" node to inspect the final prompt while fine-tuning.
 
 **Note:** ComfyUI cannot grey out widgets dynamically – when a toggle is off, its dropdowns stay visible but are simply ignored.
 
@@ -92,7 +98,6 @@ Simply append values to any of the arrays: `models`, `focal_lengths`, `apertures
 - `web/js/krea2_styler.js` filters the style dropdown client-side whenever the category changes
 - Saved workflows keep their style selection on load – the filter only resets the value if it doesn't belong to the selected category
 
-## Honorable Mentions
-Reddit user
-/u/Dear-Spend-2865
-for creating a massive Wildcard list which I took and reformatted for this node.
+## License
+
+MIT

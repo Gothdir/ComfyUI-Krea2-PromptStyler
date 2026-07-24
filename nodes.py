@@ -16,6 +16,7 @@ nach der gewaehlten Kategorie gefiltert.
 
 import json
 import os
+import random
 
 NODE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -93,8 +94,8 @@ def _dof_hint(aperture: str) -> str:
 class Krea2PromptStyler:
     CATEGORY = "conditioning/krea2"
     FUNCTION = "build_prompt"
-    RETURN_TYPES = ("STRING",)
-    RETURN_NAMES = ("prompt",)
+    RETURN_TYPES = ("STRING", "STRING")
+    RETURN_NAMES = ("prompt", "settings")
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -129,6 +130,20 @@ class Krea2PromptStyler:
                 # ------ Lighting ------
                 "use_lighting": ("BOOLEAN", {"default": False}),
                 "lighting": (CAMERAS["lighting"],),
+
+                # ------ Wildcard-Modus ------
+                "use_wildcard": ("BOOLEAN", {
+                    "default": False,
+                    "tooltip": "Wuerfelt fuer alle AKTIVIERTEN Bloecke zufaellige Werte, "
+                               "ohne die Auswahl in den Dropdowns zu veraendern. "
+                               "Styles werden innerhalb der gewaehlten Kategorie gewuerfelt."
+                }),
+                "seed": ("INT", {
+                    "default": 0, "min": 0, "max": 0xFFFFFFFFFFFFFFFF,
+                    "control_after_generate": True,
+                    "tooltip": "Seed fuer den Wildcard-Modus. 'randomize' sorgt fuer neue "
+                               "Kombinationen bei jedem Run, fester Wert macht sie reproduzierbar."
+                }),
             }
         }
 
@@ -136,7 +151,28 @@ class Krea2PromptStyler:
                      use_shot_type, shot_type,
                      use_camera, camera_model, focal_length, aperture,
                      use_film_stock, film_stock,
-                     use_lighting, lighting):
+                     use_lighting, lighting,
+                     use_wildcard, seed):
+
+        # ------ Wildcard-Modus: aktivierte Bloecke zufaellig wuerfeln ------
+        # Die Dropdown-Auswahl im Node bleibt unveraendert, nur die hier
+        # verwendeten Werte werden ersetzt. Nicht aktivierte Bloecke bleiben aus.
+        if use_wildcard:
+            rng = random.Random(seed)
+            if use_artstyle:
+                pool = sorted(ARTISTS.get(category, {}).keys())
+                if pool:
+                    style = rng.choice(pool)
+            if use_shot_type:
+                shot_type = rng.choice(CAMERAS["shot_types"])
+            if use_camera:
+                camera_model = rng.choice(CAMERAS["models"])
+                focal_length = rng.choice(CAMERAS["focal_lengths"])
+                aperture = rng.choice(CAMERAS["apertures"])
+                if use_film_stock:
+                    film_stock = rng.choice(CAMERAS["film_stocks"])
+            if use_lighting:
+                lighting = rng.choice(CAMERAS["lighting"])
 
         parts = []
 
@@ -173,8 +209,28 @@ class Krea2PromptStyler:
         if use_lighting:
             parts.append(f"{lighting.capitalize()}.")
 
+        # ------ Settings-Uebersicht fuer den zweiten Output ------
+        # Zeigt die tatsaechlich verwendeten Werte (im Wildcard-Modus also
+        # die gewuerfelten) - ideal fuer einen "Show Text"-Node.
+        info = []
+        if use_wildcard:
+            info.append(f"Wildcard: ON (seed {seed})")
+        if use_artstyle and style in STYLE_LOOKUP:
+            mode = "full text" if full_style_text else "short"
+            info.append(f"Style: {category} / {style} ({mode})")
+        else:
+            info.append("Style: off")
+        info.append(f"Shot type: {shot_type}" if use_shot_type else "Shot type: off")
+        if use_camera:
+            info.append(f"Camera: {camera_model}, {focal_length}, {aperture}")
+            info.append(f"Film stock: {film_stock}" if use_film_stock else "Film stock: off")
+        else:
+            info.append("Camera: off")
+        info.append(f"Lighting: {lighting}" if use_lighting else "Lighting: off")
+        settings = "\n".join(info)
+
         final_prompt = " ".join(parts)
-        return (final_prompt,)
+        return (final_prompt, settings)
 
 
 NODE_CLASS_MAPPINGS = {
