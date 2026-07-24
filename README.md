@@ -1,3 +1,7 @@
+<img width="618" height="779" alt="image" src="https://github.com/user-attachments/assets/3b55287c-3577-4154-8bf8-d85d916dcf4d" />
+
+
+
 # ComfyUI Krea2 Prompt Styler
 
 A prompt builder node for **Krea-2** and other **Flux-based models** in ComfyUI.
