@@ -136,7 +136,7 @@ class Krea2PromptStyler:
                     "default": False,
                     "tooltip": "Wuerfelt fuer alle AKTIVIERTEN Bloecke zufaellige Werte, "
                                "ohne die Auswahl in den Dropdowns zu veraendern. "
-                               "Styles werden innerhalb der gewaehlten Kategorie gewuerfelt."
+                               "Kategorie und Style werden beide mitgewuerfelt."
                 }),
                 "seed": ("INT", {
                     "default": 0, "min": 0, "max": 0xFFFFFFFFFFFFFFFF,
@@ -160,6 +160,9 @@ class Krea2PromptStyler:
         if use_wildcard:
             rng = random.Random(seed)
             if use_artstyle:
+                cats = [c for c in ARTISTS if ARTISTS[c]]
+                if cats:
+                    category = rng.choice(cats)
                 pool = sorted(ARTISTS.get(category, {}).keys())
                 if pool:
                     style = rng.choice(pool)

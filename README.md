@@ -26,7 +26,7 @@ Takes your base prompt and wraps it in a natural language prompt with a selected
 - **Comprehensive camera settings** – 30 camera models (mirrorless, medium format, cinema, retro), 20 focal lengths, 12 apertures, 18 film stocks, 24 shot types, 26 lighting setups
 - **Automatic depth of field hints** – selecting f/1.8 adds "shallow depth of field with creamy bokeh", f/11 adds "deep depth of field", etc.
 - **Individual toggles per block** – art style, shot type, film stock and lighting can each be switched on/off; `use_camera` acts as a master switch that disables all technical camera segments at once
-- **Wildcard mode** – randomizes all *activated* blocks per run without touching your dropdown selections; seed-based, so results are reproducible
+- **Wildcard mode** – randomizes all *activated* blocks per run (including the style category) without touching your dropdown selections; seed-based, so results are reproducible
 - **Easily extendable** – all styles and camera options live in two JSON files, no code changes needed
 
 ## Installation
@@ -64,9 +64,11 @@ Restart ComfyUI. If the style dropdown doesn't filter by category, hard-refresh 
 
 ### Wildcard mode
 
-Turn on `use_wildcard` to let the node roll random values for every block that is currently activated: the art style (within the selected category), shot type, camera model, focal length, aperture, film stock and lighting. Blocks that are toggled off stay off. Your dropdown selections are never changed – turn the switch off and you're back to your exact configuration.
+Turn on `use_wildcard` to let the node roll random values for every block that is currently activated: the style category, the art style within it, shot type, camera model, focal length, aperture, film stock and lighting. Blocks that are toggled off stay off. Your dropdown selections are never changed – turn the switch off and you're back to your exact configuration.
 
 The `seed` widget controls the randomness: leave it on `randomize` (default ComfyUI behavior via *control after generate*) to get a fresh combination on every queue, or set a fixed seed to reproduce a combination you liked.
+
+Since the dropdowns keep showing your fixed selection, check the `settings` output to see which category, style and camera values were actually rolled.
 
 **Tip:** Route the `prompt` output through a "Show Text" node to inspect the final prompt while fine-tuning.
 
