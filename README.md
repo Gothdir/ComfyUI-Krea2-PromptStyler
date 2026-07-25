@@ -64,6 +64,13 @@ Restart ComfyUI. If the style dropdown doesn't filter by category, hard-refresh 
 
 ### Wildcard mode
 
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/5813e0ad-2829-4b98-b78c-3267fb1fb2b2" width="50%">
+  <img src="https://github.com/user-attachments/assets/8a139384-8c03-47f6-a400-164ea796f57a" width="50%">
+  <img src="https://github.com/user-attachments/assets/c0430b16-7f14-418c-865a-648c2940d077" width="50%">
+</p>
+
+
 Turn on `use_wildcard` to let the node roll random values for every block that is currently activated: the style category, the art style within it, shot type, camera model, focal length, aperture, film stock and lighting. Blocks that are toggled off stay off. Your dropdown selections are never changed – turn the switch off and you're back to your exact configuration.
 
 The `seed` widget controls the randomness: leave it on `randomize` (default ComfyUI behavior via *control after generate*) to get a fresh combination on every queue, or set a fixed seed to reproduce a combination you liked.
