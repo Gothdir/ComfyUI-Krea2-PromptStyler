@@ -45,18 +45,29 @@ CAMERAS = _load_json("cameras.json", {
     "lighting": ["soft studio lighting"],
 })
 
-CATEGORY_CHOICES = list(ARTISTS.keys())
+_REAL_CATEGORIES = list(ARTISTS.keys())
+CATEGORY_CHOICES = ["All"] + _REAL_CATEGORIES
 
 # Stilname -> Beschreibung (Namen sind kategorieuebergreifend eindeutig)
 STYLE_LOOKUP = {}
 ALL_STYLE_NAMES = []
-for _cat in CATEGORY_CHOICES:
+for _cat in _REAL_CATEGORIES:
     for _name in sorted(ARTISTS[_cat].keys()):
         STYLE_LOOKUP[_name] = ARTISTS[_cat][_name]
         ALL_STYLE_NAMES.append(_name)
+ALL_STYLE_NAMES = sorted(ALL_STYLE_NAMES)
 
-_DEFAULT_CAT = CATEGORY_CHOICES[0] if CATEGORY_CHOICES else ""
-_DEFAULT_STYLE = sorted(ARTISTS[_DEFAULT_CAT].keys())[0] if _DEFAULT_CAT else ""
+
+def _styles_for_category(cat):
+    """Style-Pool fuer eine Kategorie. 'All' (oder eine unbekannte Kategorie)
+    liefert die komplette, ungefilterte Liste."""
+    if cat == "All" or cat not in ARTISTS:
+        return ALL_STYLE_NAMES
+    return sorted(ARTISTS[cat].keys())
+
+
+_DEFAULT_CAT = "All"
+_DEFAULT_STYLE = ALL_STYLE_NAMES[0] if ALL_STYLE_NAMES else ""
 
 
 # ---------------------------------------------------------------------------
@@ -70,6 +81,7 @@ try:
     @PromptServer.instance.routes.get("/krea2_styler/artists")
     async def _krea2_get_artists(request):
         mapping = {cat: sorted(entries.keys()) for cat, entries in ARTISTS.items()}
+        mapping["All"] = ALL_STYLE_NAMES
         return web.json_response(mapping)
 except Exception:
     # Ausserhalb von ComfyUI (z. B. beim Testen) einfach ignorieren
@@ -136,7 +148,9 @@ class Krea2PromptStyler:
                     "default": False,
                     "tooltip": "Wuerfelt fuer alle AKTIVIERTEN Bloecke zufaellige Werte, "
                                "ohne die Auswahl in den Dropdowns zu veraendern. "
-                               "Kategorie und Style werden beide mitgewuerfelt."
+                               "Die gewaehlte Kategorie wird respektiert (bei 'All' wird "
+                               "aus allen Styles gewuerfelt), nur der Style innerhalb "
+                               "dieser Kategorie wird gewuerfelt."
                 }),
                 "seed": ("INT", {
                     "default": 0, "min": 0, "max": 0xFFFFFFFFFFFFFFFF,
@@ -160,10 +174,7 @@ class Krea2PromptStyler:
         if use_wildcard:
             rng = random.Random(seed)
             if use_artstyle:
-                cats = [c for c in ARTISTS if ARTISTS[c]]
-                if cats:
-                    category = rng.choice(cats)
-                pool = sorted(ARTISTS.get(category, {}).keys())
+                pool = _styles_for_category(category)
                 if pool:
                     style = rng.choice(pool)
             if use_shot_type:
