@@ -21,6 +21,24 @@ import random
 NODE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
+_FALLBACK_ARTISTS = {"Fallback": {"No styles loaded": ""}}
+_FALLBACK_CAMERAS = {
+    "models": ["Sony A7 IV"],
+    "focal_lengths": ["50mm"],
+    "apertures": ["f/1.8"],
+    "film_stocks": ["Kodak Portra 400"],
+    "shot_types": ["medium shot"],
+    "lighting": ["soft studio lighting"],
+}
+
+# Zeitstempel der zuletzt eingelesenen Dateien (fuer Auto-Reload)
+_MTIMES = {}
+
+# Merkt sich die zuletzt gemeldeten Slash-Namen, damit die Warnung
+# bei jedem Reload nicht erneut ausgegeben wird
+_LAST_SANITIZED = []
+
+
 def _load_json(filename, fallback):
     path = os.path.join(NODE_DIR, filename)
     try:
@@ -31,50 +49,87 @@ def _load_json(filename, fallback):
         return fallback
 
 
+def _files_changed():
+    """True, wenn sich artists.json oder cameras.json seit dem letzten
+    Einlesen geaendert haben (Vergleich ueber Datei-Zeitstempel)."""
+    changed = False
+    for fn in ("artists.json", "cameras.json"):
+        try:
+            mt = os.path.getmtime(os.path.join(NODE_DIR, fn))
+        except OSError:
+            mt = 0
+        if _MTIMES.get(fn) != mt:
+            _MTIMES[fn] = mt
+            changed = True
+    return changed
+
+
 # ---------------------------------------------------------------------------
-# JSONs laden (einmal beim Start von ComfyUI)
+# Listen aufbauen - wird beim Start und bei jedem Reload aufgerufen
 # ---------------------------------------------------------------------------
 
-ARTISTS = _load_json("artists.json", {"Fallback": {"No styles loaded": ""}})
-CAMERAS = _load_json("cameras.json", {
-    "models": ["Sony A7 IV"],
-    "focal_lengths": ["50mm"],
-    "apertures": ["f/1.8"],
-    "film_stocks": ["Kodak Portra 400"],
-    "shot_types": ["medium shot"],
-    "lighting": ["soft studio lighting"],
-})
-
-# Echte Kategorien aus der JSON; "All" ist eine Pseudo-Kategorie, die alle
-# Styles zusammenfasst (PR #3). Wichtig: ARTISTS enthaelt KEINEN "All"-Key,
-# deshalb laeuft alles, was ueber ARTISTS iteriert, ueber _REAL_CATEGORIES.
-_REAL_CATEGORIES = list(ARTISTS.keys())
-CATEGORY_CHOICES = ["All"] + _REAL_CATEGORIES
-
-# Schraegstriche in Stilnamen bereinigen: verbreitete Extensions wie rgthree
-# interpretieren "/" in Dropdown-Werten als Ordner-Verschachtelung und
-# zerlegen den Namen. Ersatz: Division Slash (U+2215), sieht fast identisch
-# aus, wird aber nicht als Pfadtrenner erkannt. (GitHub Issue #2)
-_sanitized = []
-for _cat in _REAL_CATEGORIES:
-    for _name in list(ARTISTS[_cat].keys()):
-        if "/" in _name:
-            _clean = _name.replace("/", "\u2215")
-            ARTISTS[_cat][_clean] = ARTISTS[_cat].pop(_name)
-            _sanitized.append(_name)
-if _sanitized:
-    print(f"[Krea2 Prompt Styler] Hinweis: '/' in Stilnamen wird durch '\u2215' ersetzt, "
-          f"da Extensions wie rgthree Schraegstriche als Ordner interpretieren. "
-          f"Betroffen: {', '.join(_sanitized)}")
-
-# Stilname -> Beschreibung (Namen sind kategorieuebergreifend eindeutig)
+ARTISTS = {}
+CAMERAS = {}
+_REAL_CATEGORIES = []
+CATEGORY_CHOICES = []
 STYLE_LOOKUP = {}
 ALL_STYLE_NAMES = []
-for _cat in _REAL_CATEGORIES:
-    for _name in sorted(ARTISTS[_cat].keys()):
-        STYLE_LOOKUP[_name] = ARTISTS[_cat][_name]
-        ALL_STYLE_NAMES.append(_name)
-ALL_STYLE_NAMES = sorted(ALL_STYLE_NAMES)
+_DEFAULT_CAT = "All"
+_DEFAULT_STYLE = ""
+
+
+def reload_lists(force=False, quiet=False):
+    """Liest artists.json und cameras.json neu ein und baut alle Listen neu auf.
+    Ohne force passiert das nur, wenn sich eine Datei tatsaechlich geaendert hat."""
+    global ARTISTS, CAMERAS, _REAL_CATEGORIES, CATEGORY_CHOICES
+    global STYLE_LOOKUP, ALL_STYLE_NAMES, _DEFAULT_CAT, _DEFAULT_STYLE
+
+    if not force and not _files_changed() and ARTISTS:
+        return False
+
+    ARTISTS = _load_json("artists.json", dict(_FALLBACK_ARTISTS))
+    CAMERAS = _load_json("cameras.json", dict(_FALLBACK_CAMERAS))
+    # Fehlende Kamera-Schluessel mit Fallback auffuellen, damit der Node
+    # auch bei unvollstaendiger cameras.json startet
+    for _key, _val in _FALLBACK_CAMERAS.items():
+        if not CAMERAS.get(_key):
+            CAMERAS[_key] = list(_val)
+
+    # Echte Kategorien aus der JSON; "All" ist eine Pseudo-Kategorie, die alle
+    # Styles zusammenfasst (PR #3). Wichtig: ARTISTS enthaelt KEINEN "All"-Key,
+    # deshalb laeuft alles, was ueber ARTISTS iteriert, ueber _REAL_CATEGORIES.
+    _REAL_CATEGORIES = list(ARTISTS.keys())
+    CATEGORY_CHOICES = ["All"] + _REAL_CATEGORIES
+
+    # Schraegstriche in Stilnamen bereinigen: verbreitete Extensions wie rgthree
+    # interpretieren "/" in Dropdown-Werten als Ordner-Verschachtelung und
+    # zerlegen den Namen. Ersatz: Division Slash (U+2215), sieht fast identisch
+    # aus, wird aber nicht als Pfadtrenner erkannt. (GitHub Issue #2)
+    sanitized = []
+    for cat in _REAL_CATEGORIES:
+        for name in list(ARTISTS[cat].keys()):
+            if "/" in name:
+                ARTISTS[cat][name.replace("/", "\u2215")] = ARTISTS[cat].pop(name)
+                sanitized.append(name)
+    global _LAST_SANITIZED
+    if sanitized and not quiet and sanitized != _LAST_SANITIZED:
+        print(f"[Krea2 Prompt Styler] Hinweis: '/' in Stilnamen wird durch '\u2215' ersetzt, "
+              f"da Extensions wie rgthree Schraegstriche als Ordner interpretieren. "
+              f"Betroffen: {', '.join(sanitized)}")
+    _LAST_SANITIZED = sanitized
+
+    # Stilname -> Beschreibung (Namen sind kategorieuebergreifend eindeutig)
+    STYLE_LOOKUP = {}
+    names = []
+    for cat in _REAL_CATEGORIES:
+        for name in sorted(ARTISTS[cat].keys()):
+            STYLE_LOOKUP[name] = ARTISTS[cat][name]
+            names.append(name)
+    ALL_STYLE_NAMES = sorted(names)
+
+    _DEFAULT_CAT = "All"
+    _DEFAULT_STYLE = ALL_STYLE_NAMES[0] if ALL_STYLE_NAMES else ""
+    return True
 
 
 def _styles_for_category(cat):
@@ -85,8 +140,15 @@ def _styles_for_category(cat):
     return sorted(ARTISTS[cat].keys())
 
 
-_DEFAULT_CAT = "All"
-_DEFAULT_STYLE = ALL_STYLE_NAMES[0] if ALL_STYLE_NAMES else ""
+def _mapping_payload():
+    """Kategorie->Styles fuer das JS-Frontend (inkl. Pseudo-Kategorie 'All')."""
+    mapping = {cat: sorted(entries.keys()) for cat, entries in ARTISTS.items()}
+    mapping["All"] = ALL_STYLE_NAMES
+    return mapping
+
+
+# Erstes Laden beim Start von ComfyUI
+reload_lists(force=True)
 
 
 # ---------------------------------------------------------------------------
@@ -112,9 +174,9 @@ try:
 
         @PromptServer.instance.routes.get(_ROUTE_PATH)
         async def _krea2_get_artists(request):
-            mapping = {cat: sorted(entries.keys()) for cat, entries in ARTISTS.items()}
-            mapping["All"] = ALL_STYLE_NAMES
-            return web.json_response(mapping)
+            # Auto-Reload: geaenderte JSONs werden hier direkt mitgenommen
+            reload_lists()
+            return web.json_response(_mapping_payload())
     else:
         print("[Krea2 Prompt Styler] Route bereits registriert - Node liegt "
               "vermutlich doppelt in custom_nodes. Bitte doppelten Ordner entfernen.")
@@ -146,6 +208,9 @@ class Krea2PromptStyler:
 
     @classmethod
     def INPUT_TYPES(cls):
+        # Nimmt geaenderte JSONs automatisch mit - dadurch reicht ComfyUIs
+        # eingebautes "Refresh Node Definitions" (R) statt eines Neustarts.
+        reload_lists()
         return {
             "required": {
                 "prompt": ("STRING", {"forceInput": True}),

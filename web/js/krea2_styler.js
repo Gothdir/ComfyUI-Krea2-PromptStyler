@@ -1,6 +1,8 @@
 import { app } from "../../scripts/app.js";
 
-// Filtert das Style-Dropdown des Krea2 Prompt Styler nach gewaehlter Kategorie
+// Filtert das Style-Dropdown des Krea2 Prompt Styler nach gewaehlter Kategorie.
+// Geaenderte JSON-Dateien werden serverseitig automatisch erkannt, ein
+// "Refresh Node Definitions" (R) in ComfyUI reicht also nach dem Editieren.
 app.registerExtension({
     name: "krea2.promptstyler.categoryfilter",
 
@@ -21,11 +23,12 @@ app.registerExtension({
             function applyFilter(resetValue) {
                 if (!mapping) return;
                 const list = mapping[catWidget.value] || [];
+                if (list.length === 0) return;
                 styleWidget.options.values = list;
                 // Wert nur zuruecksetzen, wenn er nicht zur Kategorie passt
                 // (wichtig, damit geladene Workflows ihre Auswahl behalten)
                 if (resetValue || !list.includes(styleWidget.value)) {
-                    styleWidget.value = list[0] ?? "";
+                    styleWidget.value = list[0];
                 }
                 node.setDirtyCanvas(true, true);
             }
