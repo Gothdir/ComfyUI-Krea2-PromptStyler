@@ -45,8 +45,27 @@ CAMERAS = _load_json("cameras.json", {
     "lighting": ["soft studio lighting"],
 })
 
+# Echte Kategorien aus der JSON; "All" ist eine Pseudo-Kategorie, die alle
+# Styles zusammenfasst (PR #3). Wichtig: ARTISTS enthaelt KEINEN "All"-Key,
+# deshalb laeuft alles, was ueber ARTISTS iteriert, ueber _REAL_CATEGORIES.
 _REAL_CATEGORIES = list(ARTISTS.keys())
 CATEGORY_CHOICES = ["All"] + _REAL_CATEGORIES
+
+# Schraegstriche in Stilnamen bereinigen: verbreitete Extensions wie rgthree
+# interpretieren "/" in Dropdown-Werten als Ordner-Verschachtelung und
+# zerlegen den Namen. Ersatz: Division Slash (U+2215), sieht fast identisch
+# aus, wird aber nicht als Pfadtrenner erkannt. (GitHub Issue #2)
+_sanitized = []
+for _cat in _REAL_CATEGORIES:
+    for _name in list(ARTISTS[_cat].keys()):
+        if "/" in _name:
+            _clean = _name.replace("/", "\u2215")
+            ARTISTS[_cat][_clean] = ARTISTS[_cat].pop(_name)
+            _sanitized.append(_name)
+if _sanitized:
+    print(f"[Krea2 Prompt Styler] Hinweis: '/' in Stilnamen wird durch '\u2215' ersetzt, "
+          f"da Extensions wie rgthree Schraegstriche als Ordner interpretieren. "
+          f"Betroffen: {', '.join(_sanitized)}")
 
 # Stilname -> Beschreibung (Namen sind kategorieuebergreifend eindeutig)
 STYLE_LOOKUP = {}
@@ -78,11 +97,27 @@ try:
     from server import PromptServer
     from aiohttp import web
 
-    @PromptServer.instance.routes.get("/krea2_styler/artists")
-    async def _krea2_get_artists(request):
-        mapping = {cat: sorted(entries.keys()) for cat, entries in ARTISTS.items()}
-        mapping["All"] = ALL_STYLE_NAMES
-        return web.json_response(mapping)
+    _ROUTE_PATH = "/krea2_styler/artists"
+
+    def _route_exists(routes, path):
+        try:
+            return any(getattr(r, "path", None) == path for r in routes)
+        except Exception:
+            return False
+
+    # Schutz gegen Doppelt-Registrierung (z. B. wenn der Node-Ordner
+    # versehentlich zweimal in custom_nodes liegt) - sonst startet
+    # ComfyUI mit "method HEAD is already registered" nicht mehr.
+    if not _route_exists(PromptServer.instance.routes, _ROUTE_PATH):
+
+        @PromptServer.instance.routes.get(_ROUTE_PATH)
+        async def _krea2_get_artists(request):
+            mapping = {cat: sorted(entries.keys()) for cat, entries in ARTISTS.items()}
+            mapping["All"] = ALL_STYLE_NAMES
+            return web.json_response(mapping)
+    else:
+        print("[Krea2 Prompt Styler] Route bereits registriert - Node liegt "
+              "vermutlich doppelt in custom_nodes. Bitte doppelten Ordner entfernen.")
 except Exception:
     # Ausserhalb von ComfyUI (z. B. beim Testen) einfach ignorieren
     pass
@@ -148,9 +183,8 @@ class Krea2PromptStyler:
                     "default": False,
                     "tooltip": "Wuerfelt fuer alle AKTIVIERTEN Bloecke zufaellige Werte, "
                                "ohne die Auswahl in den Dropdowns zu veraendern. "
-                               "Die gewaehlte Kategorie wird respektiert (bei 'All' wird "
-                               "aus allen Styles gewuerfelt), nur der Style innerhalb "
-                               "dieser Kategorie wird gewuerfelt."
+                               "Die gewaehlte Kategorie wird respektiert; bei 'All' wird "
+                               "aus allen Styles gewuerfelt."
                 }),
                 "seed": ("INT", {
                     "default": 0, "min": 0, "max": 0xFFFFFFFFFFFFFFFF,
