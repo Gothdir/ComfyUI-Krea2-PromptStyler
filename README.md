@@ -106,6 +106,9 @@ Both lists are plain JSON files inside the node folder. Edit them and restart Co
 
 Simply append values to any of the arrays: `models`, `focal_lengths`, `apertures`, `film_stocks`, `shot_types`, `lighting`.
 
+## Update log
+26/07/26 Added native ComfyUI reload(R key) functionality so you wont have to restart comfyui when you change the artstyle etc jsons
+
 ## How it works
 
 - `nodes.py` loads both JSON files at startup and builds the dropdowns
