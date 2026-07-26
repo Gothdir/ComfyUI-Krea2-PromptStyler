@@ -45,14 +45,18 @@ CAMERAS = _load_json("cameras.json", {
     "lighting": ["soft studio lighting"],
 })
 
-CATEGORY_CHOICES = list(ARTISTS.keys())
+# Echte Kategorien aus der JSON; "All" ist eine Pseudo-Kategorie, die alle
+# Styles zusammenfasst (PR #3). Wichtig: ARTISTS enthaelt KEINEN "All"-Key,
+# deshalb laeuft alles, was ueber ARTISTS iteriert, ueber _REAL_CATEGORIES.
+_REAL_CATEGORIES = list(ARTISTS.keys())
+CATEGORY_CHOICES = ["All"] + _REAL_CATEGORIES
 
 # Schraegstriche in Stilnamen bereinigen: verbreitete Extensions wie rgthree
 # interpretieren "/" in Dropdown-Werten als Ordner-Verschachtelung und
 # zerlegen den Namen. Ersatz: Division Slash (U+2215), sieht fast identisch
 # aus, wird aber nicht als Pfadtrenner erkannt. (GitHub Issue #2)
 _sanitized = []
-for _cat in CATEGORY_CHOICES:
+for _cat in _REAL_CATEGORIES:
     for _name in list(ARTISTS[_cat].keys()):
         if "/" in _name:
             _clean = _name.replace("/", "\u2215")
@@ -66,13 +70,23 @@ if _sanitized:
 # Stilname -> Beschreibung (Namen sind kategorieuebergreifend eindeutig)
 STYLE_LOOKUP = {}
 ALL_STYLE_NAMES = []
-for _cat in CATEGORY_CHOICES:
+for _cat in _REAL_CATEGORIES:
     for _name in sorted(ARTISTS[_cat].keys()):
         STYLE_LOOKUP[_name] = ARTISTS[_cat][_name]
         ALL_STYLE_NAMES.append(_name)
+ALL_STYLE_NAMES = sorted(ALL_STYLE_NAMES)
 
-_DEFAULT_CAT = CATEGORY_CHOICES[0] if CATEGORY_CHOICES else ""
-_DEFAULT_STYLE = sorted(ARTISTS[_DEFAULT_CAT].keys())[0] if _DEFAULT_CAT else ""
+
+def _styles_for_category(cat):
+    """Style-Pool fuer eine Kategorie. 'All' (oder eine unbekannte Kategorie)
+    liefert die komplette, ungefilterte Liste."""
+    if cat == "All" or cat not in ARTISTS:
+        return ALL_STYLE_NAMES
+    return sorted(ARTISTS[cat].keys())
+
+
+_DEFAULT_CAT = "All"
+_DEFAULT_STYLE = ALL_STYLE_NAMES[0] if ALL_STYLE_NAMES else ""
 
 
 # ---------------------------------------------------------------------------
@@ -99,6 +113,7 @@ try:
         @PromptServer.instance.routes.get(_ROUTE_PATH)
         async def _krea2_get_artists(request):
             mapping = {cat: sorted(entries.keys()) for cat, entries in ARTISTS.items()}
+            mapping["All"] = ALL_STYLE_NAMES
             return web.json_response(mapping)
     else:
         print("[Krea2 Prompt Styler] Route bereits registriert - Node liegt "
@@ -168,7 +183,8 @@ class Krea2PromptStyler:
                     "default": False,
                     "tooltip": "Wuerfelt fuer alle AKTIVIERTEN Bloecke zufaellige Werte, "
                                "ohne die Auswahl in den Dropdowns zu veraendern. "
-                               "Kategorie und Style werden beide mitgewuerfelt."
+                               "Die gewaehlte Kategorie wird respektiert; bei 'All' wird "
+                               "aus allen Styles gewuerfelt."
                 }),
                 "seed": ("INT", {
                     "default": 0, "min": 0, "max": 0xFFFFFFFFFFFFFFFF,
@@ -192,10 +208,7 @@ class Krea2PromptStyler:
         if use_wildcard:
             rng = random.Random(seed)
             if use_artstyle:
-                cats = [c for c in ARTISTS if ARTISTS[c]]
-                if cats:
-                    category = rng.choice(cats)
-                pool = sorted(ARTISTS.get(category, {}).keys())
+                pool = _styles_for_category(category)
                 if pool:
                     style = rng.choice(pool)
             if use_shot_type:
