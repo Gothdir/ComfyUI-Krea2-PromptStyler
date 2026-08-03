@@ -216,42 +216,45 @@ class Krea2PromptStyler:
                 "prompt": ("STRING", {"forceInput": True}),
 
                 # ------ Artstyle ------
-                "use_artstyle": ("BOOLEAN", {"default": True}),
-                "category": (CATEGORY_CHOICES, {"default": _DEFAULT_CAT}),
+                # Widget-Namen sind bewusst lesbar ("Shot Type" statt use_shot_type).
+                # Schalter tragen den Blocknamen, das Dropdown den konkreten Wert,
+                # damit es keine doppelten Keys gibt.
+                "Artstyle": ("BOOLEAN", {"default": True}),
+                "Category": (CATEGORY_CHOICES, {"default": _DEFAULT_CAT}),
                 # Enthaelt ALLE Styles (noetig fuer die Validierung);
                 # das JS-Frontend filtert die Anzeige nach Kategorie.
-                "style": (ALL_STYLE_NAMES, {"default": _DEFAULT_STYLE}),
-                "full_style_text": ("BOOLEAN", {
+                "Style": (ALL_STYLE_NAMES, {"default": _DEFAULT_STYLE}),
+                "Full Style Text": ("BOOLEAN", {
                     "default": True,
                     "tooltip": "AN: komplette Stilbeschreibung aus artists.json verwenden. "
                                "AUS: nur kurzer Satz 'In the style of ...'."
                 }),
 
                 # ------ Shot / Framing ------
-                "use_shot_type": ("BOOLEAN", {"default": False}),
-                "shot_type": (CAMERAS["shot_types"],),
+                "Framing": ("BOOLEAN", {"default": False}),
+                "Shot Type": (CAMERAS["shot_types"],),
 
                 # ------ Kamera (Master-Switch) ------
-                "use_camera": ("BOOLEAN", {"default": True}),
-                "camera_model": (CAMERAS["models"],),
-                "focal_length": (CAMERAS["focal_lengths"], {"default": "50mm"}),
-                "aperture": (CAMERAS["apertures"], {"default": "f/1.8"}),
-                "use_film_stock": ("BOOLEAN", {"default": False}),
-                "film_stock": (CAMERAS["film_stocks"],),
+                "Camera": ("BOOLEAN", {"default": True}),
+                "Camera Model": (CAMERAS["models"],),
+                "Focal Length": (CAMERAS["focal_lengths"], {"default": "50mm"}),
+                "Aperture": (CAMERAS["apertures"], {"default": "f/1.8"}),
+                "Film Look": ("BOOLEAN", {"default": False}),
+                "Film Stock": (CAMERAS["film_stocks"],),
 
                 # ------ Lighting ------
-                "use_lighting": ("BOOLEAN", {"default": False}),
-                "lighting": (CAMERAS["lighting"],),
+                "Lighting": ("BOOLEAN", {"default": False}),
+                "Light Setup": (CAMERAS["lighting"],),
 
                 # ------ Wildcard-Modus ------
-                "use_wildcard": ("BOOLEAN", {
+                "Wildcard": ("BOOLEAN", {
                     "default": False,
                     "tooltip": "Wuerfelt fuer alle AKTIVIERTEN Bloecke zufaellige Werte, "
                                "ohne die Auswahl in den Dropdowns zu veraendern. "
                                "Die gewaehlte Kategorie wird respektiert; bei 'All' wird "
                                "aus allen Styles gewuerfelt."
                 }),
-                "seed": ("INT", {
+                "Seed": ("INT", {
                     "default": 0, "min": 0, "max": 0xFFFFFFFFFFFFFFFF,
                     "control_after_generate": True,
                     "tooltip": "Seed fuer den Wildcard-Modus. 'randomize' sorgt fuer neue "
@@ -260,12 +263,26 @@ class Krea2PromptStyler:
             }
         }
 
-    def build_prompt(self, prompt, use_artstyle, category, style, full_style_text,
-                     use_shot_type, shot_type,
-                     use_camera, camera_model, focal_length, aperture,
-                     use_film_stock, film_stock,
-                     use_lighting, lighting,
-                     use_wildcard, seed):
+    def build_prompt(self, **kwargs):
+        # Die Widget-Namen enthalten Leerzeichen, deshalb kommen sie ueber
+        # **kwargs herein und werden hier auf normale Variablen gemappt.
+        prompt = kwargs.get("prompt", "")
+        use_artstyle = kwargs.get("Artstyle", True)
+        category = kwargs.get("Category", _DEFAULT_CAT)
+        style = kwargs.get("Style", _DEFAULT_STYLE)
+        full_style_text = kwargs.get("Full Style Text", True)
+        use_shot_type = kwargs.get("Framing", False)
+        shot_type = kwargs.get("Shot Type", "")
+        use_camera = kwargs.get("Camera", True)
+        camera_model = kwargs.get("Camera Model", "")
+        focal_length = kwargs.get("Focal Length", "")
+        aperture = kwargs.get("Aperture", "")
+        use_film_stock = kwargs.get("Film Look", False)
+        film_stock = kwargs.get("Film Stock", "")
+        use_lighting = kwargs.get("Lighting", False)
+        lighting = kwargs.get("Light Setup", "")
+        use_wildcard = kwargs.get("Wildcard", False)
+        seed = kwargs.get("Seed", 0)
 
         # ------ Wildcard-Modus: aktivierte Bloecke zufaellig wuerfeln ------
         # Die Dropdown-Auswahl im Node bleibt unveraendert, nur die hier

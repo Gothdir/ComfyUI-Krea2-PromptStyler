@@ -14,8 +14,8 @@ app.registerExtension({
             const result = onNodeCreated?.apply(this, arguments);
             const node = this;
 
-            const catWidget = node.widgets?.find((w) => w.name === "category");
-            const styleWidget = node.widgets?.find((w) => w.name === "style");
+            const catWidget = node.widgets?.find((w) => w.name === "Category");
+            const styleWidget = node.widgets?.find((w) => w.name === "Style");
             if (!catWidget || !styleWidget) return result;
 
             let mapping = null; // { Kategorie: [Stilnamen...] }
