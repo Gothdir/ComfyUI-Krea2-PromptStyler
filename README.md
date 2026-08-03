@@ -21,7 +21,7 @@ Takes your base prompt and wraps it in a natural language prompt with a selected
 
 ## Features
 
-- **ca. 400 curated art styles** in 12 categories (Anime, Cartoon, Comics, Drawing, Design, Digital Painting, Painting)
+- **ca. 400 curated art styles** in 12 categories (Anime, Cartoon, Comics, Drawing, Design, Digital Painting, Painting, Cinematic Looks, Art Movements, 3D Render, Traditional Media, Dark & Horror)
 - **Two-level style selection** – pick a category and the style dropdown dynamically filters to matching entries (no restart needed)
 - **Full or short style text** – use the complete curated style description for maximum effect, or just a short "In the style of ..." sentence
 - **Comprehensive camera settings** – 30 camera models (mirrorless, medium format, cinema, retro), 20 focal lengths, 12 apertures, 18 film stocks, 24 shot types, 26 lighting setups
