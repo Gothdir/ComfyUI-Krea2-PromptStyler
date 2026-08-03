@@ -51,16 +51,16 @@ Restart ComfyUI. If the style dropdown doesn't filter by category, hard-refresh 
 
 | Widget | Description |
 |---|---|
-| `use_artstyle` | Toggle the art style block on/off |
-| `category` | Style category – filters the `style` dropdown live |
-| `style` | The actual art style, filtered by category |
-| `full_style_text` | ON: full curated style description · OFF: short "In the style of ..." |
-| `use_shot_type` / `shot_type` | Framing and camera angle (close-up, wide shot, dutch angle, ...) |
-| `use_camera` | **Master switch** – disables model, focal length, aperture *and* film stock |
-| `camera_model` / `focal_length` / `aperture` | Technical camera settings |
-| `use_film_stock` / `film_stock` | Analog film look (Portra, CineStill, Velvia, ...) |
-| `use_lighting` / `lighting` | Lighting setup (golden hour, Rembrandt, neon, ...) |
-| `use_wildcard` | Randomize all **activated** blocks – dropdown selections stay untouched |
+| `Artstyle` | Toggle the art style block on/off |
+| `Category` | Style category – filters the `style` dropdown live |
+| `Style` | The actual art style, filtered by category |
+| `full style text` | ON: full curated style description · OFF: short "In the style of ..." |
+| `shot type` / `shot_type` | Framing and camera angle (close-up, wide shot, dutch angle, ...) |
+| `camera` | **Master switch** – disables model, focal length, aperture *and* film stock |
+| `camera model` / `focal length` / `aperture` | Technical camera settings |
+| `film stock` / `film stock` | Analog film look (Portra, CineStill, Velvia, ...) |
+| `lighting` / `lighting` | Lighting setup (golden hour, Rembrandt, neon, ...) |
+| `wildcard` | Randomize all **activated** blocks – dropdown selections stay untouched |
 | `seed` | Seed for wildcard mode – set to `randomize` for new combinations every run |
 
 ### Wildcard mode
@@ -72,7 +72,7 @@ Restart ComfyUI. If the style dropdown doesn't filter by category, hard-refresh 
 </p>
 
 
-Turn on `use_wildcard` to let the node roll random values for every block that is currently activated: the style category, the art style within it, shot type, camera model, focal length, aperture, film stock and lighting. Blocks that are toggled off stay off. Your dropdown selections are never changed – turn the switch off and you're back to your exact configuration.
+Turn on `wildcard` to let the node roll random values for every block that is currently activated: the style category, the art style within it, shot type, camera model, focal length, aperture, film stock and lighting. Blocks that are toggled off stay off. Your dropdown selections are never changed – turn the switch off and you're back to your exact configuration.
 
 Thanks to a merge from winter-unmuted Wildcard now rotates through the selected Category. If you want to have it rotate through all Styles select the "All" Category.
 
@@ -105,7 +105,7 @@ Both lists are plain JSON files inside the node folder. Edit them and restart Co
 
 ### `cameras.json`
 
-Simply append values to any of the arrays: `models`, `focal_lengths`, `apertures`, `film_stocks`, `shot_types`, `lighting`.
+Simply append values to any of the arrays: `models`, `focal lengths`, `apertures`, `film stocks`, `shot types`, `lighting`.
 
 ## Update log
 03/08/26 Renaming the labels to make it less nerdy and added 5 new styles (in Cinematic)
