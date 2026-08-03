@@ -1,4 +1,5 @@
-<img width="509" height="518" alt="image" src="https://github.com/user-attachments/assets/5061cc16-3cbb-4903-8447-2def91805aef" />
+<img width="562" height="511" alt="image" src="https://github.com/user-attachments/assets/cc8c02cc-9709-4a69-b012-22e2425ae574" />
+
 
 
 
@@ -107,6 +108,7 @@ Both lists are plain JSON files inside the node folder. Edit them and restart Co
 Simply append values to any of the arrays: `models`, `focal_lengths`, `apertures`, `film_stocks`, `shot_types`, `lighting`.
 
 ## Update log
+03/08/26 Renaming the labels to make it less nerdy 
 26/07/26 Added native ComfyUI reload(R key) functionality so you wont have to restart comfyui when you change the artstyle etc jsons
 
 ## How it works
