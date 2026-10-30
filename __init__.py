@@ -1,5 +1,10 @@
-from .nodes import NODE_CLASS_MAPPINGS, NODE_DISPLAY_NAME_MAPPINGS
+from .nodes import NODE_CLASS_MAPPINGS as _LEGACY_CLASSES, NODE_DISPLAY_NAME_MAPPINGS as _LEGACY_NAMES
+from .nodes_v2 import NODE_CLASS_MAPPINGS as _V2_CLASSES, NODE_DISPLAY_NAME_MAPPINGS as _V2_NAMES
+
+NODE_CLASS_MAPPINGS = {**_LEGACY_CLASSES, **_V2_CLASSES}
+NODE_DISPLAY_NAME_MAPPINGS = {**_LEGACY_NAMES, **_V2_NAMES}
+# Menu label only; the class name stays "Krea2PromptStyler" so saved workflows still load.
+NODE_DISPLAY_NAME_MAPPINGS["Krea2PromptStyler"] = "Krea2 Prompt Styler (Legacy)"
 
 WEB_DIRECTORY = "./web/js"
-
 __all__ = ["NODE_CLASS_MAPPINGS", "NODE_DISPLAY_NAME_MAPPINGS", "WEB_DIRECTORY"]

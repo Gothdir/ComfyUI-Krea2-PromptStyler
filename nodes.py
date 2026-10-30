@@ -235,7 +235,7 @@ class Krea2PromptStyler:
                 "Shot Type": (CAMERAS["shot_types"],),
 
                 # ------ Kamera (Master-Switch) ------
-                "Camera": ("BOOLEAN", {"default": True}),
+                "Camera": ("BOOLEAN", {"default": False}),
                 "Camera Model": (CAMERAS["models"],),
                 "Focal Length": (CAMERAS["focal_lengths"], {"default": "50mm"}),
                 "Aperture": (CAMERAS["apertures"], {"default": "f/1.8"}),

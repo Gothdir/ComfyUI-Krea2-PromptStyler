@@ -30,13 +30,50 @@ Takes your base prompt and wraps it in a natural language prompt with a selected
 - **Wildcard mode** – randomizes all *activated* blocks per run (including the style category) without touching your dropdown selections; seed-based, so results are reproducible
 - **Easily extendable** – all styles and camera options live in two JSON files, no code changes needed
 
+## Two nodes
+
+| Node | Style list | Selection |
+|---|---|---|
+| **Krea2 Prompt Styler** | `styles.json` (about 1250 styles) | Category > Medium > Family > Era > Style |
+| **Krea2 Prompt Styler (Legacy)** | `artists.json` (about 400 styles) | Category > Style |
+
+The legacy node is unchanged (same class name, so saved workflows still load). Both use `cameras.json`.
+
+### Krea2 Prompt Styler (hierarchical)
+
+Each dropdown only shows values that exist under the choices above it. Every level has `All` (Era: `Any`), so you can stop at any depth. `Era` narrows the style list by the sheet's era label (for example `Contemporary`, `Historical / Contemporary`). In wildcard mode the style is drawn at random from whatever the current Category / Medium / Family / Era selection allows.
+
+Outputs of the new node: `prompt`, `settings`, `style_name`. The prompt is laid out as:
+
+```
+Style: <style name>: <style description>
+Subject: <your text input>
+<shot type, camera, film, lighting, if enabled>
+```
+
+`style_name` is the style actually used (the rolled one in wildcard mode), empty if `Artstyle` is off.
+
+`styles.json` structure:
+
+```json
+{ "Category": { "Medium": { "Family": { "Style Name": { "era": "Contemporary", "text": "description" } } } } }
+```
+
+Rebuild it from a sheet export (TSV with the columns Order, Category, Medium, Family / Subcategory, Era / Period, Style Name, Wildcard Style, Original Row):
+
+```bash
+python tools/build_styles.py export.tsv styles.json report.md
+```
+
+Style names repeated in the sheet with different text are kept as `Name (v1)`, `Name (v2)`.
+
 ## Installation
 
 ### Manual
 
 ```bash
 cd ComfyUI/custom_nodes
-git clone https://github.com/Gothdir/ComfyUI-Krea2-PromptStyler.git
+git clone https://github.com/Winter-unmuted/ComfyUI-Krea2-PromptStyler.git
 ```
 
 Restart ComfyUI. If the style dropdown doesn't filter by category, hard-refresh your browser (Ctrl+Shift+R) to reload the frontend script.
@@ -44,7 +81,7 @@ Restart ComfyUI. If the style dropdown doesn't filter by category, hard-refresh 
 ## Usage
 
 1. Add the node: **conditioning/krea2 → Krea2 Prompt Styler**
-2. Connect a string source (e.g. a Primitive/Text node) to the `prompt` input
+2. Connect a string source (e.g. a Primitive/Text node) to the `prompt` input (the new node: optional, the `Subject:` line is left out when nothing is connected)
 3. Connect the `prompt` output to your CLIP Text Encode node
 4. Optional: connect the `settings` output to a "Show Text" node to see exactly which values were used – especially handy in wildcard mode, where it shows the rolled values including the seed
 5. Configure:
@@ -113,7 +150,8 @@ Simply append values to any of the arrays: `models`, `focal lengths`, `apertures
 
 ## How it works
 
-- `nodes.py` loads both JSON files at startup and builds the dropdowns
+- `nodes_v2.py` loads `styles.json`; `/krea2_styler/styles_v2` serves the style rows to `web/js/krea2_styler_v2.js`, which runs the cascading dropdowns
+- `nodes.py` (legacy) loads both JSON files at startup and builds the dropdowns
 - A small API route (`/krea2_styler/artists`) serves the category→styles mapping to the frontend
 - `web/js/krea2_styler.js` filters the style dropdown client-side whenever the category changes
 - Saved workflows keep their style selection on load – the filter only resets the value if it doesn't belong to the selected category
